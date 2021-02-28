@@ -1,0 +1,38 @@
+#brand {
+    font-size: 5rem;
+    font-family: Blippo, fantasy;
+    text-align: center;
+    height: 64px
+}
+
+.buttons {
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+    height: 64px
+}
+
+.button {
+    background-color: #528dd1;
+    border: none;
+    color: white;
+    padding: 15px 32px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 6px;
+    cursor: pointer;
+    font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+}
+
+table {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+th, td {
+    font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    padding: 6px;
+    text-align: left;
+}

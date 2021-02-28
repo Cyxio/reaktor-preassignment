@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Clothing Brand</title>
+    <link rel="stylesheet" type="text/css" href="./styles.css" />
+  </head>
+  <body>
+  <section class="section">
+    <div class="container">
+        <div class="navigation">
+            <h1 id="brand">Clothing Brand</h1>
+            <div class="buttons">
+                <a class="button" href="/beanies">Beanies</a>
+                <a class="button" href="/facemasks">Facemasks</a>
+                <a class="button" href="/gloves">Gloves</a>
+            </div>           
+        </div>
+        <% if (items && avb) { %>
+            <table>
+                <thead>
+                    <th>Name</th>
+                    <th>Color</th>
+                    <th>Price</th>
+                    <th>Type</th>
+                    <th>Manufacturer</th>
+                    <th>ID</th>
+                    <th>Availability</th>
+                </thead>
+                <tbody>
+                    <% items.forEach(item => { %>
+                        <tr>
+                            <td><%= item.name%></td>
+                            <td><%= item.color.join('/')%></td>
+                            <td><%= item.price%></td>
+                            <td><%= item.type%></td>
+                            <td><%= item.manufacturer%></td>
+                            <td><%= item.id%></td>
+                            <td><% if (avb.hasOwnProperty(item.id)) { %>
+                                    <%=avb[item.id]%>
+                                <% } else { %> UNKNOWN <% } %></td>
+                        </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+        <% } %>
+    </div>
+</section>
+</body>
+</html>
