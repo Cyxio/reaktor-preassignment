@@ -20,12 +20,12 @@ let beanies = {};
 let facemasks = {};
 let gloves = {};
 
-//booleans for keeping track of the status of the program, if there is an active fetch request running
+//keeping track of the status of the program, if there is an active fetch request running for items or any of the manufacturers
 let fetchingItems = false;
-let fetchingAvailabilities = false;
+let fetchingAvailabilities = 0;
 
 //datetime object to keep track of the last time availabitilies were updated, changes every time fetchAvailabilities() finishes
-let successfulUpdate = new Date();
+let successfulUpdate = "never";
 
 const fetchItems = async() => {
     let response = await fetch('https://bad-api-assignment.reaktor.com/v2/products/beanies');
@@ -47,55 +47,53 @@ const fetchItems = async() => {
     fetchingItems = false;
 }
 
-const fetchAvailabilities = async() => {
-    for (const manufacturer of manufList) {
-        //counter for keeping track of retry attemps after unsuccessful fetches
-        let tries = 1;
-        console.log(`fetching availabilities for ${manufacturer}...`);
-        let availability = await fetch(`https://bad-api-assignment.reaktor.com/v2/availability/${manufacturer}`);
-        let avb = JSON.parse(await availability.text());
-        //check response value to see if fetch was successful, indicated by response length !== 2
-        while (avb.response.length === 2){
-            //5 tries granted for each manufacturer URL, found to be optimal via trial and error
-            if(tries > 5){
-                console.log("Unable to reach API");
-                break;
-            }
-            console.log(`fetch failed, retrying...(${tries}/5)`)
-            availability = await fetch(`https://bad-api-assignment.reaktor.com/v2/availability/${manufacturer}`);
-            avb = JSON.parse(await availability.text());
-            tries++;
+
+const fetchAvailabilities = async(manufacturer) => {
+    //counter for keeping track of retry attemps after unsuccessful fetches
+    let tries = 1;
+    console.log(`fetching availabilities for ${manufacturer}...`);
+    let availability = await fetch(`https://bad-api-assignment.reaktor.com/v2/availability/${manufacturer}`);
+    let avb = JSON.parse(await availability.text());
+    //check response value to see if fetch was successful, indicated by response length !== 2
+    while (avb.response.length === 2){
+        //5 tries granted for each manufacturer URL, found to be optimal via trial and error
+        if(tries > 5){
+            console.log("Unable to reach API");
+            break;
         }
-        //if the API couldn't be reached after 5 retries (6 attempts total), move on without updating availabilities for that manufacturer
-        if(avb.response.length === 2){
-            console.log(`fetch failed for ${manufacturer}`);
-            continue;
-        }
-        manufAvailbList[manufacturer] = avb.response;
-        console.log(`fetch successful for ${manufacturer}, amount of ID:s ${manufAvailbList[manufacturer].length}`);
-        console.log(`total manufacturer availabilities fetched: ${1 + manufList.indexOf(manufacturer)}`);
-    } 
-    //update dictionary of all availabilities
-    for (const [manuf, json] of Object.entries(manufAvailbList)){
-        if (!json) 
-            continue;
-        for (const item of json){
-            //handle DATAPAYLOAD, we are only interested in the INSTOCKVALUE
-            let str = item.DATAPAYLOAD;
-            str = str.split('<INSTOCKVALUE>')[1];
-            str = str.split('</INSTOCKVALUE>')[0];
-            //remember to add dictionary keys in lowercase, as item ID:s are lowercase in the 'products' API
-            availabilities[(item.id).toLowerCase()] = str;
-        }
+        console.log(`fetch failed, retrying...(${tries}/5)`)
+        availability = await fetch(`https://bad-api-assignment.reaktor.com/v2/availability/${manufacturer}`);
+        avb = JSON.parse(await availability.text());
+        tries++;
+    }
+    //if the API couldn't be reached after 5 retries (6 attempts total), move on without updating availabilities for that manufacturer
+    if(avb.response.length === 2){
+        console.log(`fetch failed for ${manufacturer}`);
+    } else {
+       manufAvailbList[manufacturer] = avb.response;
+       console.log(`fetch successful for ${manufacturer}, amount of ID:s ${manufAvailbList[manufacturer].length}`);
+       //update dictionary of the manufacturer
+       for (const item of manufAvailbList[manufacturer]){
+           //handle DATAPAYLOAD, we are only interested in the INSTOCKVALUE
+           let str = item.DATAPAYLOAD;
+           str = str.split('<INSTOCKVALUE>')[1];
+           str = str.split('</INSTOCKVALUE>')[0];
+           //remember to add dictionary keys in lowercase, as item ID:s are lowercase in the 'products' API
+           availabilities[(item.id).toLowerCase()] = str;
+       }
     }
     console.log("availabilities updated");
-    fetchingAvailabilities = false;
+    fetchingAvailabilities--;
     successfulUpdate = new Date();
 }
 
 //fetch all items and availabilities before handling requests for the first time startup
+fetchingItems = true;
 await fetchItems();
-await fetchAvailabilities();
+fetchingAvailabilities = manufList.length;
+for (const manuf of manufList){
+    fetchAvailabilities(manuf);
+}
 
 for await (const request of server) {
     //handle icon & CSS requests before anything else
@@ -124,9 +122,11 @@ for await (const request of server) {
         fetchingItems = true;
         fetchItems();
     }
-    if (!fetchingAvailabilities){ //booleans keep track of whether a fetch is currently running, no need for multiple at the same time
-        fetchingAvailabilities = true;
-        fetchAvailabilities();
+    if (fetchingAvailabilities < 1){ //if any availability fetch is running, don't start another batch
+        fetchingAvailabilities = manufList.length;
+        for (const manuf of manufList){
+            fetchAvailabilities(manuf);
+        }
     }
     if (request.url === "/beanies")
         request.respond({ body: await renderFile('index.ejs', { items: beanies, avb: availabilities, update: successfulUpdate}) });
