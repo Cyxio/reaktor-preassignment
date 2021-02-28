@@ -8,17 +8,23 @@ if (Deno.args.length > 0) {
 }
 
 const server = serve({ port: port });
-
+//list of all manufacturers, updated when fetching items
 const manufList = [];
+//dictionary of all availabilities, key is the manufacturer's name
 const manufAvailbList = {};
+//final dictionary of availabilities, keys are item ID:s
 const availabilities = {};
+
+//parsed JSON responses from API
 let beanies = {};
 let facemasks = {};
 let gloves = {};
 
+//booleans for keeping track of the status of the program, if there is an active fetch request running
 let fetchingItems = false;
 let fetchingAvailabilities = false;
 
+//datetime object to keep track of the last time availabitilies were updated, changes every time fetchAvailabilities() finishes
 let successfulUpdate = new Date();
 
 const fetchItems = async() => {
@@ -31,6 +37,7 @@ const fetchItems = async() => {
     response = await fetch('https://bad-api-assignment.reaktor.com/v2/products/gloves');
     gloves = JSON.parse(await response.text());
     console.log("fetched gloves");
+    //scan through all items to add manufacturers to the list
     for (const item of beanies.concat(facemasks, gloves)){
         if (!manufList.includes(item.manufacturer))
             manufList.push(item.manufacturer);
@@ -42,12 +49,14 @@ const fetchItems = async() => {
 
 const fetchAvailabilities = async() => {
     for (const manufacturer of manufList) {
+        //counter for keeping track of retry attemps after unsuccessful fetches
         let tries = 1;
         console.log(`fetching availabilities for ${manufacturer}...`);
         let availability = await fetch(`https://bad-api-assignment.reaktor.com/v2/availability/${manufacturer}`);
         let avb = JSON.parse(await availability.text());
         //check response value to see if fetch was successful, indicated by response length !== 2
         while (avb.response.length === 2){
+            //5 tries granted for each manufacturer URL, found to be optimal via trial and error
             if(tries > 5){
                 console.log("Unable to reach API");
                 break;
@@ -57,6 +66,7 @@ const fetchAvailabilities = async() => {
             avb = JSON.parse(await availability.text());
             tries++;
         }
+        //if the API couldn't be reached after 5 retries (6 attempts total), move on without updating availabilities for that manufacturer
         if(avb.response.length === 2){
             console.log(`fetch failed for ${manufacturer}`);
             continue;
@@ -70,9 +80,11 @@ const fetchAvailabilities = async() => {
         if (!json) 
             continue;
         for (const item of json){
+            //handle DATAPAYLOAD, we are only interested in the INSTOCKVALUE
             let str = item.DATAPAYLOAD;
             str = str.split('<INSTOCKVALUE>')[1];
             str = str.split('</INSTOCKVALUE>')[0];
+            //remember to add dictionary keys in lowercase, as item ID:s are lowercase in the 'products' API
             availabilities[(item.id).toLowerCase()] = str;
         }
     }
@@ -81,11 +93,12 @@ const fetchAvailabilities = async() => {
     successfulUpdate = new Date();
 }
 
+//fetch all items and availabilities before handling requests for the first time startup
 await fetchItems();
 await fetchAvailabilities();
 
 for await (const request of server) {
-    //handle icon request before anything else
+    //handle icon & CSS requests before anything else
     if (request.url === "/favicon.ico"){
         request.respond({
             body: await Deno.readFile("favicon.png"),
@@ -104,12 +117,14 @@ for await (const request of server) {
         });
         continue;
     }
-    //start another fetch asynchronously
+    //actual requests: start another fetch asynchronously
+    //this way product availabilities will be updated in the background and won't interfere with the normal usage of the website
+    //downside is that shown availabilities are not always up to date, solution is displaying the time when availabilities were last updated
     if (!fetchingItems) {
         fetchingItems = true;
         fetchItems();
     }
-    if (!fetchingAvailabilities){
+    if (!fetchingAvailabilities){ //booleans keep track of whether a fetch is currently running, no need for multiple at the same time
         fetchingAvailabilities = true;
         fetchAvailabilities();
     }
