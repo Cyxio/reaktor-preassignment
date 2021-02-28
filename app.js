@@ -19,6 +19,8 @@ let gloves = {};
 let fetchingItems = false;
 let fetchingAvailabilities = false;
 
+let successfulUpdate = new Date();
+
 const fetchItems = async() => {
     let response = await fetch('https://bad-api-assignment.reaktor.com/v2/products/beanies');
     beanies = JSON.parse(await response.text());
@@ -76,6 +78,7 @@ const fetchAvailabilities = async() => {
     }
     console.log("availabilities updated");
     fetchingAvailabilities = false;
+    successfulUpdate = new Date();
 }
 
 await fetchItems();
@@ -111,13 +114,13 @@ for await (const request of server) {
         fetchAvailabilities();
     }
     if (request.url === "/beanies")
-        request.respond({ body: await renderFile('index.ejs', { items: beanies, avb: availabilities }) });
+        request.respond({ body: await renderFile('index.ejs', { items: beanies, avb: availabilities, update: successfulUpdate}) });
     else if (request.url === "/facemasks")
-        request.respond({ body: await renderFile('index.ejs', { items: facemasks, avb: availabilities }) });
+        request.respond({ body: await renderFile('index.ejs', { items: facemasks, avb: availabilities, update: successfulUpdate}) });
     else if (request.url === "/gloves")
-        request.respond({ body: await renderFile('index.ejs', { items: gloves, avb: availabilities }) });
+        request.respond({ body: await renderFile('index.ejs', { items: gloves, avb: availabilities, update: successfulUpdate}) });
     else if (request.url === "/")
-        request.respond({ body: await renderFile('empty.ejs') });
+        request.respond({ body: await renderFile('index.ejs', { items: null, avb: null, update: null}) });
     else { //redirect to landing page
         request.respond({
             status: 303,

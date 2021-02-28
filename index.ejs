@@ -18,6 +18,9 @@
             </div>           
         </div>
         <% if (items && avb) { %>
+            <% if (update) { %>
+                <p class="updateTime">Product availabilities last updated on: <%=update%></p>
+            <% } %>
             <table>
                 <thead>
                     <th>Name</th>
