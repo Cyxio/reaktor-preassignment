@@ -25,7 +25,6 @@
                     <th>Name</th>
                     <th>Color</th>
                     <th>Price</th>
-                    <th>Type</th>
                     <th>Manufacturer</th>
                     <th>ID</th>
                     <th>Availability</th>
@@ -36,7 +35,6 @@
                             <td><%= item.name%></td>
                             <td><%= item.color.join('/')%></td>
                             <td><%= item.price%></td>
-                            <td><%= item.type%></td>
                             <td><%= item.manufacturer%></td>
                             <td><%= item.id%></td>
                             <td><% if (avb.hasOwnProperty(item.id)) { %>
