@@ -49,38 +49,42 @@ const fetchItems = async() => {
 
 
 const fetchAvailabilities = async(manufacturer) => {
-    //counter for keeping track of retry attemps after unsuccessful fetches
-    let tries = 1;
-    console.log(`fetching availabilities for ${manufacturer}...`);
-    let availability = await fetch(`https://bad-api-assignment.reaktor.com/v2/availability/${manufacturer}`);
-    let avb = JSON.parse(await availability.text());
-    //check response value to see if fetch was successful, indicated by response length !== 2
-    while (avb.response.length === 2){
-        //5 tries granted for each manufacturer URL, found to be optimal via trial and error
-        if(tries > 5){
-            console.log("Unable to reach API");
-            break;
+    try {
+        //counter for keeping track of retry attemps after unsuccessful fetches
+        let tries = 1;
+        console.log(`fetching availabilities for ${manufacturer}...`);
+        let availability = await fetch(`https://bad-api-assignment.reaktor.com/v2/availability/${manufacturer}`);
+        let avb = JSON.parse(await availability.text());
+        //check response value to see if fetch was successful, indicated by response length !== 2
+        while (avb.response.length === 2){
+            //5 tries granted for each manufacturer URL, found to be optimal via trial and error
+            if(tries > 5){
+                console.log("Unable to reach API");
+                break;
+            }
+            console.log(`fetch failed, retrying...(${tries}/5)`)
+            availability = await fetch(`https://bad-api-assignment.reaktor.com/v2/availability/${manufacturer}`);
+            avb = JSON.parse(await availability.text());
+            tries++;
         }
-        console.log(`fetch failed, retrying...(${tries}/5)`)
-        availability = await fetch(`https://bad-api-assignment.reaktor.com/v2/availability/${manufacturer}`);
-        avb = JSON.parse(await availability.text());
-        tries++;
-    }
-    //if the API couldn't be reached after 5 retries (6 attempts total), move on without updating availabilities for that manufacturer
-    if(avb.response.length === 2){
-        console.log(`fetch failed for ${manufacturer}`);
-    } else {
-       manufAvailbList[manufacturer] = avb.response;
-       console.log(`fetch successful for ${manufacturer}, amount of ID:s ${manufAvailbList[manufacturer].length}`);
-       //update dictionary of the manufacturer
-       for (const item of manufAvailbList[manufacturer]){
-           //handle DATAPAYLOAD, we are only interested in the INSTOCKVALUE
-           let str = item.DATAPAYLOAD;
-           str = str.split('<INSTOCKVALUE>')[1];
-           str = str.split('</INSTOCKVALUE>')[0];
-           //remember to add dictionary keys in lowercase, as item ID:s are lowercase in the 'products' API
-           availabilities[(item.id).toLowerCase()] = str;
-       }
+        //if the API couldn't be reached after 5 retries (6 attempts total), move on without updating availabilities for that manufacturer
+        if(avb.response.length === 2){
+            console.log(`fetch failed for ${manufacturer}`);
+        } else {
+           manufAvailbList[manufacturer] = avb.response;
+           console.log(`fetch successful for ${manufacturer}, amount of ID:s ${manufAvailbList[manufacturer].length}`);
+           //update dictionary of the manufacturer
+           for (const item of manufAvailbList[manufacturer]){
+               //handle DATAPAYLOAD, we are only interested in the INSTOCKVALUE
+               let str = item.DATAPAYLOAD;
+               str = str.split('<INSTOCKVALUE>')[1];
+               str = str.split('</INSTOCKVALUE>')[0];
+               //remember to add dictionary keys in lowercase, as item ID:s are lowercase in the 'products' API
+               availabilities[(item.id).toLowerCase()] = str;
+           }
+        }
+    } catch (e) {
+        console.log(e);
     }
     console.log("availabilities updated");
     fetchingAvailabilities--;
